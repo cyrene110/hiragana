@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>히라가나 스피드 퀴즈</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #timer-bar { transition: width 0.05s linear; }
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+        }
+        .shake { animation: shake 0.4s; }
+        @keyframes flash-green {
+            0% { background-color: #f0fdf4; }
+            100% { background-color: #ffffff; }
+        }
+        .flash-green { animation: flash-green 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <main class="flex-1 w-full max-w-md mx-auto relative bg-white shadow-xl flex flex-col">
+        
+        <!-- 화면 1: 시작 화면 -->
+        <div id="screen-start" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div class="mb-8">
+                <span class="text-8xl font-bold text-blue-500 block mb-6">あ</span>
+                <h1 class="text-3xl font-extrabold text-gray-900 mb-2">히라가나 스피드 퀴즈</h1>
+                <p class="text-gray-500 text-sm mt-4">화면에 나오는 히라가나의 발음을 입력하세요!</p>
+                <div class="mt-4 inline-block bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-bold">⏱️ 제한 시간: 3초</div>
+            </div>
+            <button onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform transition active:scale-95 text-xl">
+                게임 시작
+            </button>
+        </div>
+
+        <!-- 화면 2: 게임 화면 -->
+        <div id="screen-game" class="hidden flex-1 flex flex-col">
+            <div class="p-4 flex justify-between items-center border-b border-gray-100">
+                <span class="text-lg font-bold text-gray-600">점수: <span id="score-display" class="text-blue-600 text-2xl">0</span></span>
+            </div>
+            
+            <div class="w-full h-2 bg-gray-200">
+                <div id="timer-bar" class="h-full bg-blue-500 w-full rounded-r-full"></div>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-center p-6 relative">
+                <div id="char-display" class="text-9xl font-medium text-gray-900 mb-10 transition-transform text-center w-full">
+                    あ
+                </div>
+                
+                <div class="w-full px-4 relative">
+                    <!-- ★ 한글 IME 고스트 텍스트 방지용 (focus를 제대로 받기 위해 완전히 숨기지 않고 화면 밖으로 뺌) -->
+                    <input type="text" id="dummy-input" class="absolute w-1 h-1 opacity-0" style="top: -9999px; left: -9999px;" autocomplete="off" autocorrect="off" spellcheck="false">
+                    
+                    <input type="text" id="answer-input" 
+                        class="w-full text-center text-3xl font-bold py-4 px-6 border-4 border-blue-100 rounded-2xl focus:outline-none focus:border-blue-500 transition shadow-sm" 
+                        placeholder="발음 입력" autocomplete="off" autocorrect="off" spellcheck="false">
+                </div>
+            </div>
+        </div>
+
+        <!-- 화면 3: 결과 화면 -->
+        <div id="screen-result" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center bg-gray-900 text-white">
+            <h2 id="result-title" class="text-4xl font-extrabold text-red-400 mb-2">틀렸습니다!</h2>
+            
+            <div class="bg-gray-800 rounded-2xl p-6 w-full mb-6 shadow-inner mt-4">
+                <div class="text-6xl font-bold mb-4 text-white" id="result-char">あ</div>
+                <div class="border-t border-gray-700 pt-4 mt-2">
+                    <div class="text-gray-400 text-xs mb-1 uppercase tracking-wider">정답 발음</div>
+                    <div class="text-3xl font-bold text-green-400" id="result-answer">a, 아</div>
+                </div>
+            </div>
+
+            <div class="text-2xl mb-8 flex items-center justify-center">
+                최종 점수: <span id="final-score" class="text-5xl font-extrabold text-blue-400 ml-3">0</span>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform transition active:scale-95 text-xl">
+                다시 시작하기
+            </button>
+        </div>
+
+        <!-- 화면 4: 클리어 화면 (모두 맞췄을 때) -->
+        <div id="screen-clear" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center bg-indigo-900 text-white">
+            <h2 class="text-5xl font-extrabold text-yellow-400 mb-4 animate-bounce">🎊 올 클리어! 🎊</h2>
+            <p class="text-xl text-indigo-200 mb-8">모든 히라가나 46자를 완벽하게 마스터하셨습니다!</p>
+            <div class="text-2xl mb-8 flex items-center justify-center">
+                최종 점수: <span class="text-5xl font-extrabold text-white ml-3">46</span>
+            </div>
+            <button onclick="startGame()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform transition active:scale-95 text-xl">
+                다시 도전하기
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // 히라가나 46음도 데이터
+        const hiraganaData = [
+            { char: 'あ', answers: ['a', '아'] }, { char: 'い', answers: ['i', '이'] }, { char: 'う', answers: ['u', '우'] }, { char: 'え', answers: ['e', '에'] }, { char: 'お', answers: ['o', '오'] },
+            { char: 'か', answers: ['ka', '카', '가'] }, { char: 'き', answers: ['ki', '키', '기'] }, { char: 'く', answers: ['ku', '쿠', '구'] }, { char: 'け', answers: ['ke', '케', '게'] }, { char: 'こ', answers: ['ko', '코', '고'] },
+            { char: 'さ', answers: ['sa', '사'] }, { char: 'し', answers: ['shi', 'si', '시'] }, { char: 'す', answers: ['su', '수', '스'] }, { char: 'せ', answers: ['se', '세'] }, { char: 'そ', answers: ['so', '소'] },
+            { char: 'た', answers: ['ta', '타', '다'] }, { char: 'ち', answers: ['chi', 'ti', '치'] }, { char: 'つ', answers: ['tsu', 'tu', '츠', '쓰'] }, { char: 'て', answers: ['te', '테', '데'] }, { char: 'と', answers: ['to', '토', '도'] },
+            { char: 'な', answers: ['na', '나'] }, { char: 'に', answers: ['ni', '니'] }, { char: 'ぬ', answers: ['nu', '누'] }, { char: 'ね', answers: ['ne', '네'] }, { char: 'の', answers: ['no', '노'] },
+            { char: 'は', answers: ['ha', '하'] }, { char: 'ひ', answers: ['hi', '히'] }, { char: 'ふ', answers: ['fu', 'hu', '후'] }, { char: 'へ', answers: ['he', '헤'] }, { char: 'ほ', answers: ['ho', '호'] },
+            { char: 'ま', answers: ['ma', '마'] }, { char: 'み', answers: ['mi', '미'] }, { char: 'む', answers: ['mu', '무'] }, { char: 'め', answers: ['me', '메'] }, { char: 'も', answers: ['mo', '모'] },
+            { char: 'や', answers: ['ya', '야'] }, { char: 'ゆ', answers: ['yu', '유'] }, { char: 'よ', answers: ['yo', '요'] },
+            { char: 'ら', answers: ['ra', '라'] }, { char: 'り', answers: ['ri', '리'] }, { char: 'る', answers: ['ru', '루'] }, { char: 'れ', answers: ['re', '레'] }, { char: 'ろ', answers: ['ro', '로'] },
+            { char: 'わ', answers: ['wa', '와'] }, { char: 'を', answers: ['wo', 'o', '오', '워'] }, { char: 'ん', answers: ['n', 'nn', '응', '은', '음', 'ㄴ', 'ㅇ', 'ㅁ'] }
+        ];
+
+        let currentQuestion = null;
+        let score = 0;
+        const timeLimit = 3000; // 3초
+        let startTime = 0;
+        let timerReq = null;
+        let isGameRunning = false;
+        
+        let questionPool = []; 
+
+        const screenStart = document.getElementById('screen-start');
+        const screenGame = document.getElementById('screen-game');
+        const screenResult = document.getElementById('screen-result');
+        const screenClear = document.getElementById('screen-clear');
+        const charDisplay = document.getElementById('char-display');
+        const answerInput = document.getElementById('answer-input');
+        const dummyInput = document.getElementById('dummy-input');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerBar = document.getElementById('timer-bar');
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame() {
+            score = 0;
+            scoreDisplay.textContent = score;
+            isGameRunning = true;
+            
+            questionPool = [...hiraganaData];
+            shuffleArray(questionPool);
+            
+            screenStart.classList.add('hidden');
+            screenResult.classList.add('hidden');
+            screenClear.classList.add('hidden');
+            screenGame.classList.remove('hidden');
+            
+            // 시작 시에는 타이머/문제 로딩 전에 값 초기화 진행
+            answerInput.value = null;
+            
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (!isGameRunning) return;
+
+            if (score > 0) {
+                screenGame.classList.add('flash-green');
+                setTimeout(() => screenGame.classList.remove('flash-green'), 300);
+            }
+
+            if (questionPool.length === 0) {
+                gameClear();
+                return;
+            }
+            
+            currentQuestion = questionPool.pop();
+            
+            charDisplay.textContent = currentQuestion.char;
+            charDisplay.classList.remove('shake');
+            
+            // ★ 궁극의 한글 최적화 (IME 잔상 및 씹힘 완벽 차단)
+            dummyInput.focus();       // 1. 더미로 포커스를 넘겨 키보드(OS)의 글자 조합을 끊어버립니다.
+            answerInput.value = '';   // 2. 화면의 원래 입력창을 완전히 비웁니다.
+            dummyInput.value = '';    // 3. 더미 입력창도 비웁니다.
+
+            // 4. 브라우저가 위 과정을 완전히 처리할 수 있게 아주 짧은 시간(15ms)을 기다린 후 복귀합니다.
+            setTimeout(() => {
+                // 그 15ms의 찰나에 사용자가 빛의 속도로 다음 글자를 쳤다면 더미에 남습니다.
+                // 이 값을 훔쳐와서 원래 입력창에 넣어줌으로써 글자 씹힘을 0%로 만듭니다.
+                answerInput.value = dummyInput.value; 
+                answerInput.focus();
+                
+                // 만약 복구된 그 글자가 정답이었다면 바로 체크해 줍니다.
+                if (answerInput.value) {
+                    checkAnswer(answerInput.value, false);
+                }
+            }, 15);
+
+            startTimer();
+        }
+
+        function startTimer() {
+            cancelAnimationFrame(timerReq);
+            startTime = performance.now();
+            timerBar.className = "h-full bg-blue-500 w-full rounded-r-full";
+
+            function updateTimer(currentTime) {
+                const elapsed = currentTime - startTime;
+                const remaining = timeLimit - elapsed;
+                const percentage = Math.max(0, (remaining / timeLimit) * 100);
+                timerBar.style.width = `${percentage}%`;
+
+                if (percentage < 30) timerBar.classList.replace('bg-blue-500', 'bg-red-500');
+
+                if (remaining <= 0) endGame('timeout');
+                else timerReq = requestAnimationFrame(updateTimer);
+            }
+            timerReq = requestAnimationFrame(updateTimer);
+        }
+
+        function checkAnswer(inputVal, isEnterKey) {
+            if (!isGameRunning) return;
+            const cleanInput = inputVal.toLowerCase().trim();
+            if (cleanInput === '') return;
+
+            const isCorrect = currentQuestion.answers.includes(cleanInput);
+
+            if (isCorrect) {
+                score++;
+                scoreDisplay.textContent = score;
+                nextQuestion();
+            } else if (isEnterKey) {
+                endGame('wrong');
+            }
+        }
+
+        function endGame(reason) {
+            isGameRunning = false;
+            cancelAnimationFrame(timerReq);
+            
+            answerInput.value = '';
+            answerInput.blur();
+            charDisplay.classList.add('shake');
+
+            setTimeout(() => {
+                screenGame.classList.add('hidden');
+                screenResult.classList.remove('hidden');
+                
+                document.getElementById('result-title').textContent = reason === 'timeout' ? "시간 초과!" : "틀렸습니다!";
+                document.getElementById('result-char').textContent = currentQuestion.char;
+                document.getElementById('result-answer').textContent = currentQuestion.answers.join(', ');
+                document.getElementById('final-score').textContent = score;
+            }, 500);
+        }
+
+        function gameClear() {
+            isGameRunning = false;
+            cancelAnimationFrame(timerReq);
+            
+            answerInput.value = '';
+            answerInput.blur();
+            
+            setTimeout(() => {
+                screenGame.classList.add('hidden');
+                screenClear.classList.remove('hidden');
+            }, 300);
+        }
+
+        answerInput.addEventListener('input', (e) => checkAnswer(e.target.value, false));
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (e.isComposing || e.keyCode === 229) return; 
+                checkAnswer(e.target.value, true);
+            }
+        });
+
+    </script>
+</body>
+</html>
